@@ -31,8 +31,12 @@ class ChatResponse(BaseModel):
     properties: List[Property] = []
     total: int = 0
     page: int = 1
-    per_page: int = 10  # Fixed: was just `per_page: 10`
+    per_page: int = 10
     filters_used: Dict[str, Any] = {}
+
+    # ✅ ADD THIS
+    properties_full: Optional[List[Dict[str, Any]]] = None
+
 
 # --- Authentication Models ---
 class LoginRequest(BaseModel):
