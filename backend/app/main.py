@@ -286,13 +286,17 @@ async def chat(request: Request):
             result = handle_property_query(query_text)
 
             response = ChatResponse(
-                reply=result["reply"],
-                properties=result["properties"],
-                total=result["total"],
-                page=1,
-                per_page=10,
-                filters_used=result["filters"]
-            )
+            reply=result["reply"],
+            properties=result["properties"],
+            total=result["total"],
+            page=1,
+            per_page=10,
+            filters_used=result["filters"],
+            properties_full=result.get("properties_full")  # ✅ ADD
+)
+
+
+
 
             # Cache successful property queries (only if we found properties)
             if result["total"] > 0:
