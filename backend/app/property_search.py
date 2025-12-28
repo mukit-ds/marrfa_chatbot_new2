@@ -52,7 +52,7 @@ def generate_professional_reply(query: str, filters: Dict, properties: List[Prop
 
     query_lower = query.lower()
 
-    # ... (rest of the existing function remains exactly the same) ...
+    
 
     # Special handling for specific query patterns
 
@@ -261,11 +261,13 @@ def handle_property_query(query_text: str) -> Dict[str, Any]:
             reply = "Sorry, I couldn't find any properties matching your criteria. 😔\n\nTry adjusting your search filters like location, budget, or property type."
 
         return {
-            "reply": reply,
-            "properties": props[:show_count],
-            "total": total,
-            "filters": {**filters, "intent": "PROPERTY"},
-        }
+        "reply": reply,
+        "properties": props[:show_count],
+        "properties_full": raw_props,  # ✅ ADD THIS
+        "total": total,
+        "filters": {**filters, "intent": "PROPERTY"},
+}
+
 
     except Exception as e:
         # If search fails, use gentle message
