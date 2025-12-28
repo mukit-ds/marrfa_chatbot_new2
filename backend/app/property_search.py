@@ -1,4 +1,3 @@
-
 from typing import Dict, List, Any
 from .schemas import Property
 from .parser import parse_query_to_filters
@@ -51,8 +50,6 @@ def generate_professional_reply(query: str, filters: Dict, properties: List[Prop
     developer = filters.get("developer_name_nlp", [])
 
     query_lower = query.lower()
-
-    
 
     # Special handling for specific query patterns
 
@@ -249,6 +246,8 @@ def handle_property_query(query_text: str) -> Dict[str, Any]:
 
     try:
         raw_props = search_properties(filters)
+
+        # Chatbot list (typed)
         props = [Property(**p) for p in raw_props]
         total = len(props)
         show_count = min(10, total)
@@ -256,26 +255,25 @@ def handle_property_query(query_text: str) -> Dict[str, Any]:
         # Generate reply
         reply = generate_professional_reply(query_text, filters, props, total, show_count)
 
-        # If generate_professional_reply returns None (no properties found), use gentle message
+        # If no properties found
         if total == 0:
             reply = "Sorry, I couldn't find any properties matching your criteria. 😔\n\nTry adjusting your search filters like location, budget, or property type."
 
         return {
-        "reply": reply,
-        "properties": props[:show_count],
-        "properties_full": raw_props,  # ✅ ADD THIS
-        "total": total,
-        "filters": {**filters, "intent": "PROPERTY"},
-}
-
+            "reply": reply,
+            "properties": props[:show_count],      # chatbot cards (limited fields)
+            "properties_full": raw_props,          # ✅ raw API objects (ALL fields)
+            "total": total,
+            "filters": {**filters, "intent": "PROPERTY"},
+        }
 
     except Exception as e:
-        # If search fails, use gentle message
         error_reply = "Sorry, I couldn't find any properties matching your criteria. 😔\n\nTry adjusting your search filters like location, budget, or property type."
 
         return {
             "reply": error_reply,
             "properties": [],
+            "properties_full": [],  # keep consistent
             "total": 0,
             "filters": {"intent": "PROPERTY", "error": str(e)},
         }
