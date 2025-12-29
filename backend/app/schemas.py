@@ -1,8 +1,8 @@
 
 from typing import Dict, List, Any
-from .schemas import Property
 from .parser import parse_query_to_filters
 from .marrfa_client import search_properties
+from pydantic import BaseModel
 import re
 
 
