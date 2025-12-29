@@ -41,12 +41,6 @@ def generate_professional_reply(query: str, filters: Dict, properties: List[Prop
     context = analyze_query_context(query)
 
     location = filters.get("search_query", "Dubai").title()
-    bedrooms = filters.get("unit_bedrooms", "")
-    property_type = filters.get("unit_types", [])
-    price_from = filters.get("unit_price_from")
-    price_to = filters.get("unit_price_to")
-    developer = filters.get("developer_name_nlp", [])
-
     query_lower = query.lower()
 
     if ("how many" in query_lower and "property" in query_lower and context["mentions_marrfa"]):
@@ -68,6 +62,39 @@ def handle_property_query(query_text: str) -> Dict[str, Any]:
     """
     Handle property search queries.
     """
+
+    # ============================================================
+    # ✅ Minimal FIX: Agency/agent recommendation should NOT return properties
+    # ============================================================
+    q = (query_text or "").lower().strip()
+    agency_terms = [
+        "real estate agency", "real-estate agency",
+        "real state agency",     # common typo
+        "estate agency",
+        "agency", "agent", "agents",
+        "broker", "brokers",
+        "real estate agent", "real state agent"
+    ]
+    recommend_terms = ["suggest", "recommend", "best", "top", "good"]
+
+    if any(t in q for t in agency_terms) and any(t in q for t in recommend_terms):
+        return {
+            "reply": (
+                "If you're looking for a **reliable real estate agency in Dubai**, I can help you through **Marrfa**.\n\n"
+                "To recommend the best option for you, tell me:\n"
+                "1) Budget (e.g., under 1M AED / around 5M AED)\n"
+                "2) Property type (villa / apartment / townhouse)\n"
+                "3) Preferred area (Dubai Marina, Business Bay, JVC, etc.)\n"
+                "4) Bedrooms (optional)\n\n"
+                "Then I’ll suggest the best matching listings and guide you like an agent would.\n\n"
+                "Tip: When choosing any agency, check RERA registration, area specialization, and recent deal history."
+            ),
+            "properties": [],
+            "properties_full": [],
+            "total": 0,
+            "filters": {"intent": "PROPERTY", "agency_recommendation": True},
+        }
+
     filters = parse_query_to_filters(query_text)
 
     # Currency handling
@@ -100,14 +127,22 @@ def handle_property_query(query_text: str) -> Dict[str, Any]:
         # ✅ RAW data (ALL fields)
         raw_full = search_properties_raw(filters)
 
+        # ✅ Ensure properties_full is a LIST (items) not a wrapper dict
+        if isinstance(raw_full, dict) and "items" in raw_full:
+            raw_items = raw_full.get("items") or []
+        elif isinstance(raw_full, list):
+            raw_items = raw_full
+        else:
+            raw_items = []
+
         # ✅ Normalized data (chatbot cards)
-        raw_props = search_properties(filters)
-        props = [Property(**p) for p in raw_props]
+        raw_props = search_properties(filters)  # expected list[dict]
+        props_models = [Property(**p) for p in raw_props]
 
-        total = len(props)
-        show_count = min(10, total)
+        total = len(props_models)
+        show_count = min(15, total)
 
-        reply = generate_professional_reply(query_text, filters, props, total, show_count)
+        reply = generate_professional_reply(query_text, filters, props_models, total, show_count)
 
         if total == 0:
             reply = (
@@ -115,10 +150,15 @@ def handle_property_query(query_text: str) -> Dict[str, Any]:
                 "Try adjusting your search filters like location, budget, or property type."
             )
 
+        # ============================================================
+        # ✅ Critical FIX: ChatResponse expects dicts, not Property objects
+        # ============================================================
+        props_dicts = [p.model_dump() for p in props_models[:show_count]]
+
         return {
             "reply": reply,
-            "properties": props[:show_count],     # chatbot view
-            "properties_full": raw_full,           # ✅ RAW Marrfa API objects
+            "properties": props_dicts,             # ✅ dicts (fixes Pydantic error)
+            "properties_full": raw_items[:show_count],  # ✅ list of raw property dicts
             "total": total,
             "filters": {**filters, "intent": "PROPERTY"},
         }
@@ -126,8 +166,7 @@ def handle_property_query(query_text: str) -> Dict[str, Any]:
     except Exception as e:
         return {
             "reply": (
-                "Sorry, I couldn't find any properties matching your criteria. 😔\n\n"
-                "Try adjusting your search filters like location, budget, or property type."
+                "I'm having trouble searching for properties right now. Please try again later."
             ),
             "properties": [],
             "properties_full": [],
